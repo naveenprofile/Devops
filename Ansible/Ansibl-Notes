@@ -1,0 +1,378 @@
+Ansible
+
+Ansible is a simple and awesome IT automation engine by which you can automates your  IT environment for provisioning, configuration management, application and patch deployment, orchestration etc.
+
+Ansible is,
+
+Simple – commands and playbooks are human readable and easy to exchange between teams; they don’t need special skills to read it.
+Powerful – you can manage application/patch/server deployment, configuration, workflow automation or appliances (ESX hosts, Storage boxes or network devices).
+
+Agentless – Ansible does not need any agent to be running on the managed hosts , instead it connect to the hosts using OpenSSH or WinRM.
+
+Ansible Concept and Architecture
+
+Controlnode – Ansible is installed and run from the controlnode and will contain copies of your project file including ansible playbooks. It can be a workstation or a dedicated server in the environment.
+
+Managed Hosts – these are listed servers or nodes in the inventory – defined as static or via dynamic inventory scripts – on which Ansible commands or playbook tasks need to be executed.
+
+Playbook – Plays are ordered set of tasks to execute against host selections from your inventory. A playbook is a file containing one or more plays.
+
+Tasks – Task run a module with arguments to accomplish the required state or action.
+
+Tasks → Plays → Playbook
+
+Ansible Tower – is an enterprise framework by Redhat, to manage, control and secure your ansible environment.
+
+Use Cases
+
+Provisioning
+Configuration Management
+App Deployment
+Continuous Delivery
+Security & Compliance
+Orchestration
+
+Installing Ansible
+
+Linux managed hosts need to have Python 2 (2.4 or later) installed for most modules to work.
+
+yum list installed python
+yum install -y ansible 
+ansible --version
+
+Ansible Deployment
+
+Configuration file location and precedence
+
+Ansible program is fully depends on the the ansible configuration file which can be stored in multiple locations depends on your project preference. You can store your ansible.cfg at below locations and see the preference order. (top item has the most priority)
+
+$ANSIBLE_CONFIG – Environment variable
+./ansible.cfg – cfg file in current directory
+~/.ansible.cfg – home directory
+/etc/ansible/ansible.cfg – default cfg
+As you can see above, ansible will search for the $ANSIBLE_CONFIG variable and load that config if available. If not set, program will try to load config from current working directory, then from our home directory and if all those not available, ansible load config file from default location – /etc/ansible/ansible.cfg.
+
+Here see a simple configuration file
+
+[Defaults]
+#inventory file location
+inventory = ./inventory 
+
+#which user credential ansible has to use to connect to host
+remote_user = someuser
+ 
+#whether it should ask for "someuser" password" 
+ask_pass = false 
+
+You can see other important sections of configuration files.
+
+[devops@ansible-box dep-install]$ grep '^[' /etc/ansible/ansible.cfg
+[defaults]
+[privilege_escalation]
+[paramiko_connection]
+[ssh_connection]
+[persistent_connection]
+[accelerate]
+[selinux]
+[colors]
+
+You can see the configuration file ansible has used during command execution (-v) or by checking the version.
+
+[root@ansible-box ansible]# ansible --version
+ansible 2.5.3
+  config file = /root/ansible/ansible.cfg
+  configured module search path = [u'/root/.ansible/plugins/modules', u'/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python2.7/site-packages/ansible
+  executable location = /bin/ansible
+  python version = 2.7.5 (default, Apr 11 2018, 07:36:10) [GCC 4.8.5 20150623 (Red Hat 4.8.5-28)]
+
+  Privilege Escalation
+
+  [privilege_escalation]
+#enable privilege escalation
+become = true 
+
+#set to use sudo for privilege escalation
+become_method = sudo
+
+#privilege escalation user
+become_user = root 
+
+#enable prompting for the privilege escalation password
+become_ask_pass = true 
+
+In above example, ansible will automatically escalate privilege to root by using sudo and also it will ask for sudo password for the user. You can turn this off by become_ask_pass = false settigns.
+
+Managing Ansible Inventory
+
+Inventory File
+
+An inventory file is a simple and plain text file where we store those host information ansible has to deal with. It can be simple in any format (YAML, ini, etc). Default inventory file location is /etc/ansible/hosts but you can specify a different inventory file in your ansible config file (as above) or using the -i option on the command line.
+
+[root@ansible-box ~]# ansible all -m ping -i myinventory
+
+Here see a sample inventory file.
+
+[myself]
+localhost
+
+[intranetweb]
+servera.techbeatly.com
+serverb.techbeatly.6com
+
+[database]
+db101.techbeatly.com
+
+[everyone:children]
+myself
+intranetweb
+database
+
+You can see, this is a simple one in ini format and contains few hosts and groups. Group myself contains only one host which is localhost. (Not a mandatory one, I have given as an example). intranetweb group containers 2 servers – servera.techbeatly.com and serverb.techbeatly.com. db101.techbeatly.com is under database group. And finally we have group everyone with all other groups as children.
+
+Lets check what ansible can understand from this inventory file.
+
+[root@ansible-box ansible]# ansible all --list-hosts
+  hosts (4):
+    db101.techbeatly.com
+    localhost
+    servera.techbeatly.com
+    serverb.techbeatly.com
+    
+[root@ansible-box ansible]# ansible intranetweb --list-hosts
+  hosts (2):
+    servera.techbeatly.com
+    serverb.techbeatly.com    
+Here see some of the sample ansible --list-host pattern for reference.
+
+ansible db1.example.com -i inventory --list-hosts
+ansible -i inventory --list-hosts 172.25.252.44
+ansible -i inventory --list-hosts all
+ansible -i inventory --list-hosts london
+ansible -i inventory --list-hosts environments
+ansible -i inventory --list-hosts ungrouped
+ansible -i inventory --list-hosts '.example.com' 
+ansible -i inventory --list-hosts '.example.com,!.lab.example.com' 
+ansible -i inventory --list-hosts lb1.lab.example.com,s1.lab.example.com,db1.example.com 
+ansible -i inventory --list-hosts '172.25.'
+ansible -i inventory --list-hosts 's' 
+ansible -i inventory --list-hosts 'prod,172,lab'
+ansible -i inventory --list-hosts 'db,&london'
+If you are adding a lot of hosts following similar patterns, you can add as below rather than listing each hostname:
+
+[webservers]
+www[01:50].example.com
+[databases]
+db-[a:f].example.com
+
+192.168.0.[10:20]
+[a:c].dns.example.com
+
+Dynamic Inventory
+Inventory can be static (like ini or YAML format) or dynamic via inventory scripts. For those working on cloud or container based environment, you will not be able to manage inventory with a static source. In that case you need a dynamic inventory system with scripts.
+
+There are few sample inventory scripts available by community; check this repo for samples. Also read Working with Dynamic Inventories.
+
+[devops@ansible-box dep-dynamic]$ inventory/myinventory.py --list
+{"webservers": {"hosts": ["servera.teachbeatly.com"], "vars": {}}}
+
+
+Running Ansible Ad-Hoc commands
+
+We have already  run few ad-hoc command to list down the hosts in earlier sections.
+
+See all parts of  Automation with Ansible Guides here
+
+ansible <hosts | all> -m <module> -a <arguments>
+Let’s try few modules to run as ad-hoc commands. Below one is a sample command to execute ping﻿ module on those listed hosts.
+
+[root@ansible-box ~]# ansible all -m ping -i mylist 
+box2 | SUCCESS => {
+    "changed": false, 
+    "ping": "pong"
+}
+box1 | SUCCESS => {
+    "changed": false, 
+    "ping": "pong"
+}
+
+nother one to check host uptime and user id using command﻿ module.
+
+[root@ansible-box ~]# ansible all -i mylist -m command -a "uptime"
+box2 | SUCCESS | rc=0 >>
+ 07:15:49 up  1:12,  2 users,  load average: 0.00, 0.00, 0.00
+box1 | SUCCESS | rc=0 >>
+ 07:15:49 up 15 min,  2 users,  load average: 0.00, 0.00, 0.00
+[root@ansible-box ~]# ansible all -i mylist -m command -a "id"
+box2 | SUCCESS | rc=0 >>
+uid=0(root) gid=0(root) groups=0(root)
+box1 | SUCCESS | rc=0 >>
+uid=0(root) gid=0(root) groups=0(root)
+Some more examples below.
+
+Install/Remove Package
+
+[root@ansible-box ~]# ansible webservers -i mylist -m yum -a "name=httpd state=present"
+#Or 
+[root@ansible-box ~]# ansible webservers -i mylist -m yum -a "name=httpd state=absent"
+
+Install on Ubuntu using module apt
+
+[root@ansible-box ~]# ansible -i mylist webservers -m apt -a "name=apache2 state=present"
+Start and enable a service
+
+[root@ansible-box ~]# ansible -i mylist dbservers -m service -a "name=httpd state=started enabled=yes"
+As we discussed earlier, we must use -b to become privileged user to install items. Let’s say we are using devops﻿ user to login (remote_user), make sure devops has sudo access on the target machine.
+
+[devops@node1 ~]$ sudo cat /etc/sudoers.d/devops
+[sudo] password for devops:
+devops ALL=(ALL) NOPASSWD: ALL
+Let’s try one command﻿ module without switching as privileged user.
+
+[devops@ansible-box dep-adhoc]$ ansible localhost -m command -a 'id'
+localhost | SUCCESS | rc=0 >>
+uid=1000(devops) gid=1000(devops) groups=1000(devops),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+You can see, the output shows devops user details.
+
+Now we will try command module with switching to dbadmin user and see the different.
+
+[devops@ansible-box dep-adhoc]$ ansible localhost -m command -a 'id' -u dbadmin
+localhost | SUCCESS | rc=0 >>
+uid=1002(dbadmin) gid=1002(dbadmin) groups=1002(dbadmin) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+Let’s try another command with copy﻿ module as using privileged user.
+
+[devops@ansible-box dep-adhoc]$ ansible localhost -m copy -a 'content="Managed by Ansible\n" dest=/etc/motd' -u devops --become
+localhost | SUCCESS => {
+"changed": true,
+"checksum": "4458b979ede3c332f8f2128385df4ba305e58c27",
+"dest": "/etc/motd",
+"gid": 0,
+"group": "root",
+"md5sum": "65a4290ee5559756ad04e558b0e0c4e3",
+"mode": "0644",
+"owner": "root",
+"secontext": "system_u:object_r:etc_t:s0",
+"size": 19,
+"src": "/home/devops/.ansible/tmp/ansible-tmp-1523860264.94-170788199948146/source",
+"state": "file",
+"uid": 0
+}
+Another example using file module.
+
+$ ansible webservers -m file -a "dest=/tmp/mytext.txt mode=600" 
+# or 
+$ ansible dbservers -m file -a "dest=/tmp/mytext.txt mode=755 owner=devops group=devops"
+And, please note some of the important arguments or option you can use while running ansible ad-hoc commands.
+
+-m MODULE_NAME, --module-name=MODULE_NAME  # module name to execute (default=command)
+-a MODULE_ARGS, --args=MODULE_ARGS # module arguments 
+-i INVENTORY, --inventory=INVENTORY # specify inventory host path or comma separated host list.
+--list-hosts # outputs a list of matching hosts; does not execute
+anything else
+-b, --become # run operations with become
+--become-method=BECOME_METHOD # privilege escalation method to use (default=sudo
+--become-user=BECOME_USER   # run operations as this user
+
+
+----------------
+
+YUM
+
+- name: Install the latest version of Apache
+  ansible.builtin.yum:
+    name: httpd
+    state: latest
+
+- name: Install Apache >= 2.4
+  ansible.builtin.yum:
+    name: httpd>=2.4
+    state: present
+
+- name: Install a list of packages (suitable replacement for 2.11 loop deprecation warning)
+  ansible.builtin.yum:
+    name:
+      - nginx
+      - postgresql
+      - postgresql-server
+    state: present
+
+- name: Install a list of packages with a list variable
+  ansible.builtin.yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - httpd
+    - httpd-tools
+
+- name: Remove the Apache package
+  ansible.builtin.yum:
+    name: httpd
+    state: absent
+
+- name: Install the latest version of Apache from the testing repo
+  ansible.builtin.yum:
+    name: httpd
+    enablerepo: testing
+    state: present
+
+- name: Install one specific version of Apache
+  ansible.builtin.yum:
+    name: httpd-2.2.29-1.4.amzn1
+    state: present
+
+- name: Upgrade all packages
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+
+- name: Upgrade all packages, excluding kernel & foo related packages
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+    exclude: kernel*,foo*
+
+- name: Install the nginx rpm from a remote repo
+  ansible.builtin.yum:
+    name: http://nginx.org/packages/centos/6/noarch/RPMS/nginx-release-centos-6-0.el6.ngx.noarch.rpm
+    state: present
+
+- name: Install nginx rpm from a local file
+  ansible.builtin.yum:
+    name: /usr/local/src/nginx-release-centos-6-0.el6.ngx.noarch.rpm
+    state: present
+
+- name: Install the 'Development tools' package group
+  ansible.builtin.yum:
+    name: "@Development tools"
+    state: present
+
+- name: Install the 'Gnome desktop' environment group
+  ansible.builtin.yum:
+    name: "@^gnome-desktop-environment"
+    state: present
+
+- name: List ansible packages and register result to print with debug later
+  ansible.builtin.yum:
+    list: ansible
+  register: result
+
+- name: Install package with multiple repos enabled
+  ansible.builtin.yum:
+    name: sos
+    enablerepo: "epel,ol7_latest"
+
+- name: Install package with multiple repos disabled
+  ansible.builtin.yum:
+    name: sos
+    disablerepo: "epel,ol7_latest"
+
+- name: Download the nginx package but do not install it
+  ansible.builtin.yum:
+    name:
+      - nginx
+    state: latest
+    download_only: true
+
+
+    ------------------------
+    

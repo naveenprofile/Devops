@@ -1,0 +1,39 @@
+---
+- name: install and start the nginx
+  hosts: web
+  become: yes
+  tasks:
+    - name: install the httpd and firewalld
+      yum:
+          name:
+            - httpd
+            - firewalld
+          state: latest
+    - name: start the httpd
+      service:
+          name: httpd
+          state: started
+          enabled: yes
+    - name: start the firewalld
+      service:
+         name: firewalld
+         state: started
+         enabled: yes
+    - name: open firewall ports
+      firewalld:
+         service: http
+         permanent: yes
+         state: enabled
+    - name: copy html content
+      copy:
+         content: "Welcome to Ansible who are learning\n"
+         dest: /var/www/html/index.html
+- name: verfiy and test webserver
+  hosts: localhost
+  become: no
+  tasks:
+    - name: connect to webserver
+      uri:
+         url: http://192.168.56.7
+         status_code: 200
+         return_content: true
