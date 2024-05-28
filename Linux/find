@@ -1,0 +1,92 @@
+Option	Description
+-name	Search for files by name
+-iname	Case-insensitive search for files by name
+-type	Search for files by type (e.g., f for regular files)
+-size	Search for files by size
+-mtime	Search for files by modification time
+-atime	Search for files by access time
+-ctime	Search for files by change time
+-user	Search for files by owner
+-group	Search for files by group
+-perm	Search for files by permissions
+-empty	Search for empty files or directories
+-not	Invert the following expression or conditions
+-and	Combine multiple expressions or conditions with logical AND
+-or	Combine multiple expressions or conditions with logical OR
+-exec	Execute a command on each matching file
+-execdir	Execute a command on the directory containing the file
+-print	Print the path of the matched files (default action)
+-delete	Delete the matched files
+-maxdepth	Set the maximum depth of the search
+-mindepth	Set the minimum depth of the search
+-follow	Follow symbolic links during the search
+-regex	Search for files using a regular expression pattern
+-printf	Print specific file information using a format specifier
+
+
+find ./ -name "*.page" -type f -print0: The find action will start in the current directory, searching by name for files that match the "*.page" search string. Directories will not be listed because we're specifically telling it to look for files only, with -type f. The print0 argument tells find to not treat whitespace as the end of a filename. This means that that filenames with spaces in them will be processed correctly.
+xargs -o: The -0 arguments xargs to not treat whitespace as the end of a filename.
+tar -cvzf page_files.tar.gz: This is the command xargs is going to feed the file list from find to. The tar utility will create an archive file called "page_files.tar.gz."
+
+find .: Start the search in the current directory. The find command is recursive by default, so subdirectories will be searched too.
+-name "*.page": We're looking for files with names that match the "*.page" search string.
+-type f: We're only looking for files, not directories.
+-exec wc: We're going to execute the wc command on the filenames that are matched with the search string.
+-w: Any options that you want to pass to the command must be placed immediately following the command.
+"{}": The "{}" placeholder represents each filename and must be the last item in the parameter list.
+\;: A semicolon ";" is used to indicate the end of the parameter list. It must be escaped with a backslash "\" so that the shell doesn't interpret it.
+
+
+
+find . -name SEARCH_NAME - Find files and directories by name
+find . -type f -name SEARCH_NAME - Find only files or only directories
+find . -type d -name SEARCH_NAME - if you only want to search for directories, specify type -d:
+find . -type f -iname SEARCH_NAME - Run a case-insensitive search
+find . -type f -name "*.cpp" - Search files by their extension (important)
+find . -type f -name "*.cpp" -o -name "*.txt" - Search for multiple files with multiple extensions (or condition)
+find ./new -name mystuff - Look for files in specific directory
+find ./location1 /second/location -type f -name "pattern" - Search for files in multiple directories
+find . -empty- Find empty files and directories
+find . -empty -type f
+find . -empty -type f -name "*.cpp"
+find . -size 50k - Find big files or small (Search based on file size) - +1G
+find . -size +100M -size -2G - To find files bigger than 100 MB but smaller than 2 GB in size:
+find / -size +500M -name "*.log"
+
+To recall:
+
+c : bytes
+k: kilobytes
+M: Megabytes
+G: Gigabytes
+
+find . -type f -mtime -3 - Find recently modified files (Search based on modify or creation time)
+
+mtime: last modification time of file
+ctime: creation time of the file
+atime: last access time of the
+
+find . -type f -mmin -5 To find all the files that were modified in the last 5 minutes, use:
+
+mmin, amin and cmin.
+
+find . -type f -mmin +20 -mmin -30 -name "*.java"
+
+
+find -perm mode - Find files with specific file permissions
+find . -perm 777
+find . -perm a=r+w
+$ find -type f -perm 777 -print -exec chmod 644 {} \;
+
+
+find . -type f -user John - Find files owned by a user
+find . -type f -user John -name "*.cpp"
+
+find . -maxdepth 1 -type f -name "*.txt" - Don't find recursively, search only in current directory
+
+find . -path "./directory_exclude/*" -prune -o -name SEARCH_NAME - Exclude a directory from search
+
+find . -type f -name "*.txt" -exec ls -l {} +
+find -type f -name "*.txt" -exec rm -f {} \;
+find . -type f -name *.txt" -exec ls -l {} \;
+find . -type f -name *.txt" | xargs ls -l - This is where xargs helps. You just parse the output of the find command to the xargs command via pipe.
